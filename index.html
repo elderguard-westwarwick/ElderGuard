@@ -1,3 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ElderGuard — Concern Reporting Tool</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2L4 7v9c0 7.5 5.2 14.1 12 15.9C22.8 30.1 28 23.5 28 16V7L16 2z' fill='%231a2744'/%3E%3Cpath d='M16 6L7 10.2V16c0 5.5 3.8 10.4 9 11.8 5.2-1.4 9-6.3 9-11.8v-5.8L16 6z' fill='%231d9e75'/%3E%3Cpath d='M13 16.5l2.2 2.2 4.5-4.5' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #1a2744;
+  --navy-mid: #253360;
+  --navy-light: #e8ecf5;
+  --teal: #1d9e75;
+  --teal-dark: #0f6e56;
+  --teal-light: #e1f5ee;
+  --teal-mid: #5dcaa5;
+  --amber: #854f0b;
+  --amber-light: #faeeda;
+  --red: #a32d2d;
+  --red-light: #fcebeb;
+  --green: #3b6d11;
+  --green-light: #eaf3de;
+  --gray-50: #f8f8f6;
+  --gray-100: #ededea;
+  --gray-200: #d4d4cf;
+  --gray-400: #9a9a94;
+  --gray-500: #7a7a74;
+  --gray-700: #3a3a36;
+  --white: #ffffff;
+  --radius: 10px;
+  --radius-lg: 16px;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #eaeff7;
+  min-height: 100vh;
+  color: var(--gray-700);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; flex-direction: column; min-height: 100vh; }
+.screen.active { display: flex; }
+
+/* ════════════════════════════════════════
+   REPORTER FORM
+════════════════════════════════════════ */
+.topnav {
+  background: var(--navy);
+  padding: 0 2rem;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topnav-left { display: flex; align-items: center; gap: 10px; }
+.topnav-org { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 300; }
+.topnav-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.15); }
+.topnav-tool { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; }
+.topnav-right { display: flex; align-items: center; gap: 8px; }
+.version-badge { font-size: 10px; font-weight: 600; color: var(--teal-mid); background: rgba(29,158,117,0.15); padding: 3px 8px; border-radius: 20px; letter-spacing: 0.05em; }
+.secure-badge { display: flex; align-items: center; gap: 4px; font-size: 10px; color: rgba(255,255,255,0.4); }
+.secure-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal-mid); }
+.coord-link { font-size: 11px; color: rgba(255,255,255,0.3); cursor: pointer; text-decoration: none; padding: 4px 8px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; transition: all 0.15s; }
+.coord-link:hover { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.25); }
+
+.page-wrapper { max-width: 700px; margin: 2.5rem auto 4rem; padding: 0 1rem; flex: 1; width: 100%; }
+
+.header { background: var(--navy); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 2.5rem 2.5rem 2.25rem; position: relative; overflow: hidden; }
+.header-bg-circle-1 { position: absolute; top: -50px; right: -50px; width: 220px; height: 220px; border-radius: 50%; background: rgba(29,158,117,0.1); pointer-events: none; }
+.header-bg-circle-2 { position: absolute; bottom: -70px; left: 10px; width: 160px; height: 160px; border-radius: 50%; background: rgba(255,255,255,0.03); pointer-events: none; }
+.header-inner { position: relative; display: flex; align-items: flex-start; gap: 1.5rem; }
+.shield-wrap { flex-shrink: 0; width: 64px; height: 64px; }
+.shield-wrap svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3)); }
+.header-text { flex: 1; }
+.header-program { font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal-mid); margin-bottom: 0.35rem; }
+.header h1 { font-family: 'DM Serif Display', serif; font-size: 2rem; font-weight: 400; color: var(--white); line-height: 1.15; margin-bottom: 0.4rem; }
+.header-tagline { font-size: 14px; color: rgba(255,255,255,0.5); font-weight: 300; font-style: italic; }
+
+.progress-bar-wrap { background: var(--navy-mid); padding: 0.75rem 2.5rem; display: flex; align-items: center; gap: 1rem; }
+.progress-bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--teal); border-radius: 2px; width: 0%; transition: width 0.4s ease; }
+.progress-label { font-size: 11px; color: rgba(255,255,255,0.4); white-space: nowrap; min-width: 80px; text-align: right; }
+
+.form-card { background: var(--white); border-radius: 0 0 var(--radius-lg) var(--radius-lg); padding: 0 2.5rem 2.5rem; }
+
+.section { border-top: 1px solid var(--gray-100); padding-top: 1.75rem; margin-top: 1.75rem; }
+.section:first-of-type { border-top: none; padding-top: 2rem; margin-top: 0; }
+.section-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal-dark); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 8px; }
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--teal-light); }
+.section-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--teal-light); color: var(--teal-dark); font-size: 10px; font-weight: 700; flex-shrink: 0; }
+
+.field { margin-bottom: 1.25rem; }
+.field:last-child { margin-bottom: 0; }
+.field-label { display: block; font-size: 13px; font-weight: 500; color: var(--gray-700); margin-bottom: 0.45rem; }
+.field-label .req { color: var(--teal); margin-left: 2px; }
+.field-label .opt { font-size: 11px; font-weight: 400; color: var(--gray-400); margin-left: 4px; }
+.field input[type="text"], .field textarea, .field select {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--gray-700); background: var(--gray-50);
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; outline: none;
+}
+.field input[type="text"]:focus, .field textarea:focus, .field select:focus {
+  border-color: var(--teal); background: var(--white); box-shadow: 0 0 0 3px rgba(29,158,117,0.1);
+}
+.field input.error, .field input.error:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(163,45,45,0.08); }
+.field textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+.field-error { display: none; font-size: 12px; color: var(--red); margin-top: 5px; font-weight: 500; }
+.field-error.visible { display: block; }
+
+.radio-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.radio-group label, .checkbox-grid label {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  border: 1.5px solid var(--gray-200); border-radius: var(--radius); cursor: pointer;
+  font-size: 13px; font-weight: 400; color: var(--gray-700); background: var(--gray-50);
+  transition: all 0.12s; user-select: none; line-height: 1.3;
+}
+.radio-group label:hover, .checkbox-grid label:hover { border-color: var(--teal-mid); background: var(--teal-light); }
+.radio-group input[type="radio"], .checkbox-grid input[type="checkbox"] {
+  appearance: none; width: 16px; height: 16px; border: 2px solid var(--gray-200);
+  border-radius: 50%; flex-shrink: 0; transition: all 0.12s; position: relative; cursor: pointer;
+}
+.checkbox-grid input[type="checkbox"] { border-radius: 4px; }
+.radio-group input[type="radio"]:checked, .checkbox-grid input[type="checkbox"]:checked { border-color: var(--teal); background: var(--teal); }
+.radio-group input[type="radio"]:checked::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: white; }
+.checkbox-grid input[type="checkbox"]:checked::after { content: ''; position: absolute; top: 1px; left: 4px; width: 5px; height: 9px; border: 2px solid white; border-top: none; border-left: none; transform: rotate(45deg); }
+.radio-group label:has(input:checked), .checkbox-grid label:has(input:checked) { border-color: var(--teal); background: var(--teal-light); color: var(--navy); font-weight: 500; }
+.checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.concern-level { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.concern-level label { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 8px; border: 2px solid var(--gray-200); border-radius: var(--radius); cursor: pointer; text-align: center; transition: all 0.12s; background: var(--gray-50); user-select: none; }
+.concern-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.concern-icon svg { width: 14px; height: 14px; }
+.concern-text { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.concern-level input { display: none; }
+.concern-level label.low:has(input:checked) { border-color: var(--green); background: var(--green-light); }
+.concern-level label.low:has(input:checked) .concern-text { color: var(--green); }
+.concern-level label.moderate:has(input:checked) { border-color: var(--amber); background: var(--amber-light); }
+.concern-level label.moderate:has(input:checked) .concern-text { color: var(--amber); }
+.concern-level label.high:has(input:checked) { border-color: var(--red); background: var(--red-light); }
+.concern-level label.high:has(input:checked) .concern-text { color: var(--red); }
+
+.safety-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.safety-toggle label { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; border: 2px solid var(--gray-200); border-radius: var(--radius); cursor: pointer; font-size: 15px; font-weight: 500; background: var(--gray-50); transition: all 0.12s; user-select: none; }
+.safety-toggle input { display: none; }
+.safety-toggle label.yes:has(input:checked) { border-color: var(--red); background: var(--red-light); color: var(--red); }
+.safety-toggle label.no:has(input:checked) { border-color: var(--green); background: var(--green-light); color: var(--green); }
+.safety-note { margin-top: 8px; padding: 10px 14px; background: var(--amber-light); border-left: 3px solid #ef9f27; border-radius: 0 var(--radius) var(--radius) 0; font-size: 12px; color: var(--amber); font-weight: 500; line-height: 1.5; }
+
+.triage-preview { margin-top: 1.75rem; border-top: 1px solid var(--gray-100); padding-top: 1.75rem; display: none; }
+.triage-preview.visible { display: block; }
+.triage-preview-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray-400); margin-bottom: 0.75rem; }
+.triage-card { border-radius: var(--radius); padding: 1.25rem 1.5rem; display: flex; align-items: center; justify-content: space-between; border: 2px solid; }
+.triage-card.low { background: var(--green-light); border-color: var(--green); }
+.triage-card.moderate { background: var(--amber-light); border-color: #ef9f27; }
+.triage-card.high { background: var(--red-light); border-color: var(--red); }
+.triage-left { display: flex; flex-direction: column; gap: 3px; }
+.triage-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.triage-card.low .triage-badge { color: var(--green); }
+.triage-card.moderate .triage-badge { color: var(--amber); }
+.triage-card.high .triage-badge { color: var(--red); }
+.triage-desc { font-size: 13px; color: var(--gray-700); }
+.triage-score { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.triage-card.low .triage-score { color: var(--green); }
+.triage-card.moderate .triage-score { color: var(--amber); }
+.triage-card.high .triage-score { color: var(--red); }
+
+.submit-area { margin-top: 2rem; border-top: 1px solid var(--gray-100); padding-top: 2rem; display: flex; flex-direction: column; gap: 10px; }
+.btn-submit { width: 100%; padding: 16px; background: var(--navy); color: var(--white); border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; transition: background 0.15s, transform 0.1s, opacity 0.15s; letter-spacing: 0.01em; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-submit:hover:not(:disabled) { background: var(--navy-mid); }
+.btn-submit:active:not(:disabled) { transform: scale(0.99); }
+.btn-submit:disabled { opacity: 0.65; cursor: not-allowed; }
+.btn-submit .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+.btn-submit.loading .spinner { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-reset { width: 100%; padding: 11px; background: transparent; color: var(--gray-400); border: 1.5px solid var(--gray-200); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.12s; }
+.btn-reset:hover { border-color: var(--gray-500); color: var(--gray-700); }
+.form-note { text-align: center; font-size: 11.5px; color: var(--gray-400); line-height: 1.6; margin-top: 4px; }
+
+.success-screen { display: none; text-align: center; padding: 3rem 2rem 2.5rem; }
+.success-screen.visible { display: block; }
+.success-icon-wrap { width: 72px; height: 72px; border-radius: 50%; background: var(--teal-light); margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; }
+.success-screen h2 { font-family: 'DM Serif Display', serif; font-size: 1.75rem; font-weight: 400; color: var(--navy); margin-bottom: 0.5rem; }
+.success-screen p { font-size: 14px; color: var(--gray-500); margin-bottom: 1.75rem; line-height: 1.7; max-width: 380px; margin-left: auto; margin-right: auto; }
+.success-meta { background: var(--gray-50); border-radius: var(--radius); padding: 1rem 1.25rem; text-align: left; font-size: 13px; margin-bottom: 1.75rem; border: 1px solid var(--gray-100); }
+.success-meta-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--gray-100); }
+.success-meta-row:last-child { border-bottom: none; }
+.success-meta-row span:first-child { color: var(--gray-400); font-size: 12px; }
+.success-meta-row span:last-child { font-weight: 500; color: var(--gray-700); }
+.success-case-id { font-family: monospace; font-size: 13px; background: var(--navy-light); color: var(--navy); padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+.success-risk-high { color: var(--red); font-weight: 600; }
+.success-risk-moderate { color: var(--amber); font-weight: 600; }
+.success-risk-low { color: var(--green); font-weight: 600; }
+
+.footer { background: var(--navy); border-radius: 0 0 var(--radius-lg) var(--radius-lg); padding: 1.25rem 2.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.footer-left { display: flex; align-items: center; gap: 8px; }
+.footer-shield svg { width: 18px; height: 18px; opacity: 0.6; }
+.footer-text { font-size: 11px; color: rgba(255,255,255,0.35); line-height: 1.5; }
+.footer-text strong { color: rgba(255,255,255,0.55); font-weight: 500; }
+.footer-right { font-size: 11px; color: rgba(255,255,255,0.25); text-align: right; line-height: 1.5; }
+
+/* ════════════════════════════════════════
+   PASSWORD SCREEN
+════════════════════════════════════════ */
+.password-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--navy);
+  padding: 2rem;
+}
+.password-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+}
+.password-shield { margin: 0 auto 1.5rem; width: 56px; height: 56px; }
+.password-shield svg { width: 100%; height: 100%; }
+.password-card h2 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; font-weight: 400; color: white; margin-bottom: 0.35rem; }
+.password-card p { font-size: 13px; color: rgba(255,255,255,0.45); margin-bottom: 1.75rem; line-height: 1.6; }
+.password-input-wrap { position: relative; margin-bottom: 1rem; }
+.password-input-wrap input {
+  width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,255,255,0.15); border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif; font-size: 15px; color: white;
+  outline: none; text-align: center; letter-spacing: 0.15em; transition: border-color 0.15s;
+}
+.password-input-wrap input::placeholder { letter-spacing: 0; color: rgba(255,255,255,0.3); }
+.password-input-wrap input:focus { border-color: var(--teal-mid); }
+.password-input-wrap input.shake { animation: shake 0.4s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 60%{transform:translateX(6px)} 80%{transform:translateX(-3px)} }
+.btn-unlock { width: 100%; padding: 13px; background: var(--teal); color: white; border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+.btn-unlock:hover { background: var(--teal-dark); }
+.password-error { font-size: 12px; color: #f87171; margin-top: 8px; display: none; }
+.password-error.visible { display: block; }
+.back-to-form { margin-top: 1.25rem; font-size: 12px; color: rgba(255,255,255,0.3); cursor: pointer; transition: color 0.15s; }
+.back-to-form:hover { color: rgba(255,255,255,0.6); }
+
+/* ════════════════════════════════════════
+   COORDINATOR DASHBOARD
+════════════════════════════════════════ */
+.coord-topnav {
+  background: var(--navy);
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.coord-topnav-left { display: flex; align-items: center; gap: 12px; }
+.coord-nav-shield svg { width: 24px; height: 24px; }
+.coord-nav-title { font-size: 14px; font-weight: 600; color: white; letter-spacing: 0.01em; }
+.coord-nav-sub { font-size: 11px; color: rgba(255,255,255,0.4); }
+.coord-topnav-right { display: flex; align-items: center; gap: 10px; }
+.btn-signout { font-size: 12px; color: rgba(255,255,255,0.4); background: transparent; border: 1px solid rgba(255,255,255,0.1); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+.btn-signout:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
+
+.coord-body { flex: 1; padding: 2rem; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+/* Metrics row */
+.metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
+.metric-card { background: white; border-radius: var(--radius); padding: 1.25rem; border: 1px solid var(--gray-100); }
+.metric-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray-400); margin-bottom: 0.5rem; }
+.metric-value { font-size: 28px; font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 4px; }
+.metric-sub { font-size: 12px; color: var(--gray-400); }
+.metric-card.high-card { border-left: 3px solid var(--red); }
+.metric-card.high-card .metric-value { color: var(--red); }
+
+/* Case list */
+.cases-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.cases-title { font-size: 14px; font-weight: 600; color: var(--navy); }
+.cases-filters { display: flex; gap: 8px; }
+.filter-btn { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1.5px solid var(--gray-200); background: white; color: var(--gray-500); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.12s; }
+.filter-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+.case-list { display: flex; flex-direction: column; gap: 8px; }
+.case-row {
+  background: white; border-radius: var(--radius); padding: 1rem 1.25rem;
+  border: 1.5px solid var(--gray-100); cursor: pointer;
+  display: grid; grid-template-columns: auto 1fr auto auto auto;
+  align-items: center; gap: 1rem; transition: all 0.12s;
+}
+.case-row:hover { border-color: var(--teal-mid); box-shadow: 0 2px 8px rgba(29,158,117,0.08); }
+.risk-pill { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+.risk-pill.high { background: var(--red-light); color: var(--red); }
+.risk-pill.moderate { background: var(--amber-light); color: var(--amber); }
+.risk-pill.low { background: var(--green-light); color: var(--green); }
+.case-name { font-size: 14px; font-weight: 500; color: var(--navy); }
+.case-reporter { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+.case-time { font-size: 12px; color: var(--gray-400); white-space: nowrap; }
+.status-pill { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 6px; white-space: nowrap; }
+.status-pill.open { background: #e6f1fb; color: #185fa5; }
+.status-pill.in-progress { background: var(--amber-light); color: var(--amber); }
+.status-pill.referred { background: #eeedfe; color: #534ab7; }
+.status-pill.monitoring { background: var(--teal-light); color: var(--teal-dark); }
+.status-pill.closed { background: var(--gray-100); color: var(--gray-500); }
+.status-pill.closed-followup { background: var(--navy-light); color: var(--navy); }
+.case-chevron { color: var(--gray-200); font-size: 18px; }
+
+.empty-state { text-align: center; padding: 4rem 2rem; color: var(--gray-400); }
+.empty-state .empty-icon { font-size: 40px; margin-bottom: 1rem; opacity: 0.4; }
+.empty-state p { font-size: 14px; line-height: 1.6; }
+
+/* ════════════════════════════════════════
+   CASE DETAIL VIEW
+════════════════════════════════════════ */
+.detail-body { flex: 1; padding: 2rem; max-width: 900px; margin: 0 auto; width: 100%; }
+.detail-back { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--gray-400); cursor: pointer; margin-bottom: 1.5rem; transition: color 0.12s; border: none; background: none; font-family: 'DM Sans', sans-serif; padding: 0; }
+.detail-back:hover { color: var(--navy); }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; align-items: start; }
+
+.detail-card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--gray-100); overflow: hidden; }
+.detail-card-header { background: var(--navy); padding: 1.25rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+.detail-card-header h3 { font-size: 14px; font-weight: 500; color: white; }
+.detail-card-header .case-id-badge { font-family: monospace; font-size: 12px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); padding: 3px 10px; border-radius: 4px; }
+.detail-card-body { padding: 1.5rem; }
+
+.detail-field { margin-bottom: 1.1rem; padding-bottom: 1.1rem; border-bottom: 1px solid var(--gray-100); }
+.detail-field:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.detail-field-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gray-400); margin-bottom: 4px; }
+.detail-field-value { font-size: 14px; color: var(--gray-700); line-height: 1.5; }
+.detail-field-value.empty { color: var(--gray-400); font-style: italic; }
+
+.obs-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.obs-tag { font-size: 12px; background: var(--navy-light); color: var(--navy); padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+
+/* Coordinator panel */
+.coord-panel { background: white; border-radius: var(--radius-lg); border: 2px solid var(--teal-light); overflow: hidden; position: sticky; top: 72px; }
+.coord-panel-header { background: var(--teal); padding: 1rem 1.5rem; }
+.coord-panel-header h3 { font-size: 13px; font-weight: 600; color: white; letter-spacing: 0.02em; }
+.coord-panel-header p { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+.coord-panel-body { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+
+.coord-field label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray-500); margin-bottom: 6px; }
+.coord-field select, .coord-field textarea {
+  width: 100%; padding: 9px 12px; border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius); font-family: 'DM Sans', sans-serif;
+  font-size: 13px; color: var(--gray-700); background: var(--gray-50); outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.coord-field select:focus, .coord-field textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(29,158,117,0.1); }
+.coord-field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+.recommended-action-display {
+  padding: 10px 12px; background: var(--navy-light); border-radius: var(--radius);
+  font-size: 13px; font-weight: 600; color: var(--navy);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.recommended-action-display .auto-badge { font-size: 10px; font-weight: 500; color: var(--gray-400); }
+
+.decision-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.decision-toggle label { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 1.5px solid var(--gray-200); border-radius: var(--radius); cursor: pointer; font-size: 13px; font-weight: 500; background: var(--gray-50); transition: all 0.12s; user-select: none; }
+.decision-toggle input { display: none; }
+.decision-toggle label.confirm:has(input:checked) { border-color: var(--green); background: var(--green-light); color: var(--green); }
+.decision-toggle label.modify:has(input:checked) { border-color: var(--amber); background: var(--amber-light); color: var(--amber); }
+
+.referral-timestamp { font-size: 11px; color: var(--gray-400); text-align: center; padding-top: 0.25rem; }
+
+.btn-save-coord { width: 100%; padding: 13px; background: var(--teal); color: white; border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-save-coord:hover { background: var(--teal-dark); }
+.btn-save-coord .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+.btn-save-coord.loading .spinner { display: block; }
+
+.saved-banner { display: none; background: var(--green-light); border: 1px solid var(--green); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; color: var(--green); font-weight: 500; text-align: center; }
+.saved-banner.visible { display: block; }
+
+/* V2 PLACEHOLDER — outcome documentation section goes here */
+.outcome-placeholder { margin-top: 1rem; padding: 12px; background: var(--gray-50); border: 1.5px dashed var(--gray-200); border-radius: var(--radius); font-size: 12px; color: var(--gray-400); text-align: center; line-height: 1.5; }
+
+@media (max-width: 900px) {
+  .detail-grid { grid-template-columns: 1fr; }
+  .coord-panel { position: static; }
+  .metrics-row { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .coord-body, .detail-body { padding: 1rem; }
+  .metrics-row { grid-template-columns: 1fr 1fr; }
+  .case-row { grid-template-columns: auto 1fr auto; }
+  .case-time, .case-chevron { display: none; }
+  .page-wrapper { margin: 1rem auto 3rem; }
+  .header, .form-card { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .checkbox-grid { grid-template-columns: 1fr; }
+  .safety-toggle { grid-template-columns: 1fr; }
+  .footer { flex-direction: column; align-items: flex-start; }
+  .progress-bar-wrap { padding: 0.75rem 1.25rem; }
+  .topnav { padding: 0 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SCREEN 1: REPORTER FORM
+══════════════════════════════════════ -->
+<div class="screen active" id="screen-reporter">
+  <nav class="topnav">
+    <div class="topnav-left">
+      <span class="topnav-org">West Warwick Senior &amp; Community Center</span>
+      <div class="topnav-divider"></div>
+      <span class="topnav-tool">ElderGuard Reporting Tool</span>
+    </div>
+    <div class="topnav-right">
+      <span class="version-badge">v1.0</span>
+      <span class="secure-badge"><div class="secure-dot"></div> Secure</span>
+      <a class="coord-link" onclick="showScreen('screen-password')">Coordinator Login</a>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <div class="header">
+      <div class="header-bg-circle-1"></div>
+      <div class="header-bg-circle-2"></div>
+      <div class="header-inner">
+        <div class="shield-wrap">
+          <svg viewBox="0 0 64 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M32 2L4 14v20c0 20 12 32 28 36 16-4 28-16 28-36V14L32 2z" fill="#253360"/>
+            <path d="M32 2L4 14v20c0 20 12 32 28 36 16-4 28-16 28-36V14L32 2z" stroke="#1d9e75" stroke-width="1.5" fill="none" opacity="0.6"/>
+            <path d="M32 9L10 19v15c0 15 9 24 22 27 13-3 22-12 22-27V19L32 9z" fill="#1a2744"/>
+            <path d="M32 9L10 19v3l22-9 22 9v-3L32 9z" fill="#1d9e75" opacity="0.5"/>
+            <rect x="29.5" y="22" width="5" height="18" rx="2.5" fill="#1d9e75"/>
+            <rect x="23" y="28.5" width="18" height="5" rx="2.5" fill="#1d9e75"/>
+            <path d="M16 52c4 6 9 10 16 12 7-2 12-6 16-12H16z" fill="#1d9e75" opacity="0.25"/>
+          </svg>
+        </div>
+        <div class="header-text">
+          <div class="header-program">Elder Protection Program</div>
+          <h1>ElderGuard</h1>
+          <div class="header-tagline">What you notice matters.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
+      <div class="progress-label" id="progress-label">0 of 6 sections</div>
+    </div>
+
+    <div class="form-card">
+      <div id="form-body">
+
+        <div class="section">
+          <div class="section-label"><span class="section-num">1</span> Reporter Information</div>
+          <div class="field">
+            <label class="field-label">Reporter type <span class="req">*</span></label>
+            <div class="radio-group" id="reporter-type-group">
+              <label><input type="radio" name="reporter_type" value="Staff"> Staff</label>
+              <label><input type="radio" name="reporter_type" value="Police"> Police</label>
+              <label><input type="radio" name="reporter_type" value="Fire/EMS"> Fire / EMS</label>
+              <label><input type="radio" name="reporter_type" value="Meals on Wheels"> Meals on Wheels</label>
+              <label><input type="radio" name="reporter_type" value="Bus Driver"> Bus Driver</label>
+              <label><input type="radio" name="reporter_type" value="Home Visitor"> Home Visitor</label>
+              <label><input type="radio" name="reporter_type" value="Other"> Other</label>
+            </div>
+            <div class="field-error" id="err-reporter-type">Please select your reporter type.</div>
+          </div>
+          <div class="field">
+            <label class="field-label">Your name <span class="opt">(optional)</span></label>
+            <input type="text" name="reporter_name" placeholder="First and last name">
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-label"><span class="section-num">2</span> Individual Information</div>
+          <div class="field">
+            <label class="field-label">Name or identifier <span class="req">*</span></label>
+            <input type="text" name="individual_name" id="individual-name" placeholder="Full name or case reference">
+            <div class="field-error" id="err-individual-name">Please enter the individual's name or an identifier.</div>
+          </div>
+          <div class="field">
+            <label class="field-label">Address <span class="opt">(optional)</span></label>
+            <input type="text" name="individual_address" placeholder="Street address, city, zip">
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-label"><span class="section-num">3</span> Observations</div>
+          <div class="field">
+            <label class="field-label">Select all that apply</label>
+            <div class="checkbox-grid">
+              <label><input type="checkbox" name="obs" value="Unusual bruising or injury" data-score="2"> Unusual bruising or injury</label>
+              <label><input type="checkbox" name="obs" value="Poor living conditions" data-score="1"> Poor living conditions</label>
+              <label><input type="checkbox" name="obs" value="Signs of neglect" data-score="2"> Signs of neglect</label>
+              <label><input type="checkbox" name="obs" value="Sudden financial concerns" data-score="1"> Sudden financial concerns</label>
+              <label><input type="checkbox" name="obs" value="Behavioral changes" data-score="1"> Behavioral changes</label>
+              <label><input type="checkbox" name="obs" value="Caregiver concerns" data-score="2"> Caregiver concerns</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-label"><span class="section-num">4</span> Level of Concern</div>
+          <div class="field">
+            <label class="field-label">How concerned are you? <span class="req">*</span></label>
+            <div class="concern-level" id="concern-level-group">
+              <label class="low">
+                <input type="radio" name="concern_level" value="Low" data-score="1">
+                <div class="concern-icon" style="background:#eaf3de;"><svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5" stroke="#3b6d11" stroke-width="1.5"/></svg></div>
+                <div class="concern-text" style="color:#3b6d11;">Low</div>
+              </label>
+              <label class="moderate">
+                <input type="radio" name="concern_level" value="Moderate" data-score="3">
+                <div class="concern-icon" style="background:#faeeda;"><svg viewBox="0 0 14 14" fill="none"><path d="M7 2l5 9H2l5-9z" stroke="#854f0b" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+                <div class="concern-text" style="color:#854f0b;">Moderate</div>
+              </label>
+              <label class="high">
+                <input type="radio" name="concern_level" value="High" data-score="5">
+                <div class="concern-icon" style="background:#fcebeb;"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="2" width="10" height="10" rx="1.5" stroke="#a32d2d" stroke-width="1.5"/></svg></div>
+                <div class="concern-text" style="color:#a32d2d;">High</div>
+              </label>
+            </div>
+            <div class="field-error" id="err-concern-level">Please select a level of concern.</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-label"><span class="section-num">5</span> Additional Notes</div>
+          <div class="field">
+            <label class="field-label">Describe what you observed <span class="opt">(optional)</span></label>
+            <textarea name="notes" placeholder="Include any relevant details — what you saw, heard, or noticed. There are no wrong answers. Your observations are important."></textarea>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-label"><span class="section-num">6</span> Immediate Safety</div>
+          <div class="field">
+            <label class="field-label">Is there an immediate threat to this person's safety? <span class="req">*</span></label>
+            <div class="safety-toggle" id="safety-toggle-group">
+              <label class="yes">
+                <input type="radio" name="immediate_safety" value="Yes" data-score="4">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 3v3m0 2v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Yes — immediate concern
+              </label>
+              <label class="no">
+                <input type="radio" name="immediate_safety" value="No" data-score="0">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5 8l2.5 2.5L11 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                No — not immediate
+              </label>
+            </div>
+            <div class="field-error" id="err-safety">Please indicate whether there is an immediate safety concern.</div>
+            <div class="safety-note">If yes and you believe this is an emergency, call 911 first. This report supports follow-up care and coordination.</div>
+          </div>
+        </div>
+
+        <div class="triage-preview" id="triage-preview">
+          <div class="triage-preview-label">Auto-triage preview</div>
+          <div class="triage-card" id="triage-card">
+            <div class="triage-left">
+              <div class="triage-badge" id="triage-badge"></div>
+              <div class="triage-desc" id="triage-desc"></div>
+            </div>
+            <div class="triage-score" id="triage-score"></div>
+          </div>
+        </div>
+
+        <div class="submit-area">
+          <button class="btn-submit" id="submit-btn" type="button" onclick="submitReport()">
+            <div class="spinner"></div>
+            <span class="btn-text">Submit Report</span>
+          </button>
+          <button class="btn-reset" type="button" onclick="resetForm()">Clear and start over</button>
+          <p class="form-note">This report is confidential and will only be reviewed by authorized ElderGuard program staff.<br>West Warwick Senior &amp; Community Center — ElderGuard Program</p>
+        </div>
+      </div>
+
+      <div class="success-screen" id="success-screen">
+        <div class="success-icon-wrap">
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+            <circle cx="17" cy="17" r="15" stroke="#1d9e75" stroke-width="2"/>
+            <path d="M10 17.5l5 5 9-10" stroke="#1d9e75" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2>Report Received</h2>
+        <p>Thank you for taking the time to report your concern. What you noticed matters — your report will be reviewed by ElderGuard program staff.</p>
+        <div class="success-meta" id="success-meta"></div>
+        <button class="btn-submit" onclick="resetForm()" style="max-width:320px;margin:0 auto;">
+          <span class="btn-text">Submit another report</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-left">
+        <div class="footer-shield">
+          <svg viewBox="0 0 20 24" fill="none"><path d="M10 1L2 4.5v6C2 15.5 5.5 20 10 22c4.5-2 8-6.5 8-11.5v-6L10 1z" fill="white" opacity="0.3"/></svg>
+        </div>
+        <div class="footer-text">
+          <strong>ElderGuard</strong> is a confidential reporting program.<br>
+          Reports are reviewed by authorized staff only. Not a substitute for emergency services.
+        </div>
+      </div>
+      <div class="footer-right">West Warwick Senior &amp; Community Center<br>ElderGuard Program — v1.0</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 2: PASSWORD
+══════════════════════════════════════ -->
+<div class="screen" id="screen-password">
+  <div class="password-screen">
+    <div class="password-card">
+      <div class="password-shield">
+        <svg viewBox="0 0 64 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M32 2L4 14v20c0 20 12 32 28 36 16-4 28-16 28-36V14L32 2z" fill="rgba(255,255,255,0.08)"/>
+          <path d="M32 2L4 14v20c0 20 12 32 28 36 16-4 28-16 28-36V14L32 2z" stroke="#1d9e75" stroke-width="1.5" fill="none" opacity="0.5"/>
+          <rect x="29.5" y="22" width="5" height="18" rx="2.5" fill="#1d9e75" opacity="0.8"/>
+          <rect x="23" y="28.5" width="18" height="5" rx="2.5" fill="#1d9e75" opacity="0.8"/>
+        </svg>
+      </div>
+      <h2>Coordinator Access</h2>
+      <p>This area is restricted to authorized ElderGuard program coordinators.</p>
+      <div class="password-input-wrap">
+        <input type="password" id="coord-password" placeholder="Enter access code" onkeydown="if(event.key==='Enter')checkPassword()">
+      </div>
+      <div class="password-error" id="password-error">Incorrect access code. Please try again.</div>
+      <button class="btn-unlock" onclick="checkPassword()">Access Dashboard</button>
+      <div class="back-to-form" onclick="showScreen('screen-reporter')">← Back to reporting form</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 3: COORDINATOR DASHBOARD
+══════════════════════════════════════ -->
+<div class="screen" id="screen-dashboard">
+  <nav class="coord-topnav">
+    <div class="coord-topnav-left">
+      <div class="coord-nav-shield">
+        <svg viewBox="0 0 64 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M32 2L4 14v20c0 20 12 32 28 36 16-4 28-16 28-36V14L32 2z" fill="#253360"/>
+          <rect x="29.5" y="22" width="5" height="18" rx="2.5" fill="#1d9e75"/>
+          <rect x="23" y="28.5" width="18" height="5" rx="2.5" fill="#1d9e75"/>
+        </svg>
+      </div>
+      <div>
+        <div class="coord-nav-title">ElderGuard Coordinator Dashboard</div>
+        <div class="coord-nav-sub">West Warwick Senior &amp; Community Center</div>
+      </div>
+    </div>
+    <div class="coord-topnav-right">
+      <button class="btn-signout" onclick="signOut()">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="coord-body">
+    <div class="metrics-row" id="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Total Cases</div>
+        <div class="metric-value" id="metric-total">0</div>
+        <div class="metric-sub">All time</div>
+      </div>
+      <div class="metric-card high-card">
+        <div class="metric-label">High Risk Open</div>
+        <div class="metric-value" id="metric-high">0</div>
+        <div class="metric-sub">Requires immediate review</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Referred</div>
+        <div class="metric-value" id="metric-referred">0</div>
+        <div class="metric-sub">Cases referred to services</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Avg Response</div>
+        <div class="metric-value" id="metric-response">—</div>
+        <div class="metric-sub">Intake to coordinator action</div>
+      </div>
+    </div>
+
+    <div class="cases-header">
+      <div class="cases-title">Case Intake Log</div>
+      <div class="cases-filters">
+        <button class="filter-btn active" onclick="filterCases('all', this)">All</button>
+        <button class="filter-btn" onclick="filterCases('open', this)">Open</button>
+        <button class="filter-btn" onclick="filterCases('high', this)">High Risk</button>
+        <button class="filter-btn" onclick="filterCases('referred', this)">Referred</button>
+      </div>
+    </div>
+
+    <div class="case-list" id="case-list">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>No cases submitted yet.<br>Cases will appear here as reports come in.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SCREEN 4: CASE DETAIL
+══════════════════════════════════════ -->
+<div class="screen" id="screen-detail">
+  <nav class="coord-topnav">
+    <div class="coord-topnav-left">
+      <div class="coord-nav-shield">
+        <svg viewBox="0 0 64 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M32 2L4 14v20c0 20 12 32 28 36 16-4 28-16 28-36V14L32 2z" fill="#253360"/>
+          <rect x="29.5" y="22" width="5" height="18" rx="2.5" fill="#1d9e75"/>
+          <rect x="23" y="28.5" width="18" height="5" rx="2.5" fill="#1d9e75"/>
+        </svg>
+      </div>
+      <div>
+        <div class="coord-nav-title">Case Review</div>
+        <div class="coord-nav-sub" id="detail-nav-sub">Loading...</div>
+      </div>
+    </div>
+    <div class="coord-topnav-right">
+      <button class="btn-signout" onclick="signOut()">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="detail-body">
+    <button class="detail-back" onclick="showScreen('screen-dashboard')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Back to case list
+    </button>
+
+    <div class="detail-grid">
+      <!-- Intake Report -->
+      <div>
+        <div class="detail-card">
+          <div class="detail-card-header">
+            <h3>Intake Report</h3>
+            <span class="case-id-badge" id="detail-case-id"></span>
+          </div>
+          <div class="detail-card-body" id="detail-card-body"></div>
+        </div>
+      </div>
+
+      <!-- Coordinator Panel -->
+      <div>
+        <div class="coord-panel">
+          <div class="coord-panel-header">
+            <h3>Coordinator Review</h3>
+            <p>Complete all fields and save to log this referral.</p>
+          </div>
+          <div class="coord-panel-body">
+
+            <div class="coord-field">
+              <label>Recommended Action <span style="color:var(--teal-mid);font-size:9px;letter-spacing:0.05em;">AUTO-GENERATED</span></label>
+              <div class="recommended-action-display">
+                <span id="coord-recommended-action">—</span>
+                <span class="auto-badge">Based on risk score</span>
+              </div>
+            </div>
+
+            <div class="coord-field">
+              <label>Assigned Pathway <span style="color:var(--red);margin-left:2px;">*</span></label>
+              <select id="coord-pathway">
+                <option value="">— Select pathway —</option>
+                <option value="APS">APS — Adult Protective Services</option>
+                <option value="Law Enforcement">Law Enforcement</option>
+                <option value="Staff Outreach">Staff Outreach</option>
+                <option value="Case Review">Case Review</option>
+              </select>
+            </div>
+
+            <div class="coord-field">
+              <label>Coordinator Decision <span style="color:var(--red);margin-left:2px;">*</span></label>
+              <div class="decision-toggle">
+                <label class="confirm">
+                  <input type="radio" name="coord_decision" value="Confirm">
+                  ✓ Confirm
+                </label>
+                <label class="modify">
+                  <input type="radio" name="coord_decision" value="Modify">
+                  ✎ Modify
+                </label>
+              </div>
+            </div>
+
+            <div class="coord-field">
+              <label>Case Status <span style="color:var(--red);margin-left:2px;">*</span></label>
+              <select id="coord-status">
+                <option value="Open">Open</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Referred">Referred</option>
+                <option value="Monitoring">Monitoring</option>
+                <option value="Closed">Closed</option>
+                <option value="Closed — Follow Up Needed">Closed — Follow Up Needed</option>
+              </select>
+            </div>
+
+            <div class="coord-field">
+              <label>Coordinator Notes</label>
+              <textarea id="coord-notes" placeholder="Document your decision, any modifications to the recommended action, referral details, or follow-up steps..."></textarea>
+            </div>
+
+            <!-- V2 PLACEHOLDER ─────────────────────────────
+                 Replace the div below with the full outcome
+                 documentation section in Version 2.
+                 This should include: outcome type dropdown,
+                 outcome date, follow-up contact log, and
+                 resolution narrative field.
+            ─────────────────────────────────────────────── -->
+            <div class="outcome-placeholder">
+              📋 Full outcome documentation coming in V2.<br>
+              For now, use Coordinator Notes above to record outcomes.
+            </div>
+
+            <div class="referral-timestamp" id="referral-timestamp"></div>
+
+            <div class="saved-banner" id="saved-banner">✓ Case saved — referral logged with timestamp</div>
+
+            <button class="btn-save-coord" id="save-coord-btn" onclick="saveCoordinatorReview()">
+              <div class="spinner"></div>
+              <span>Save &amp; Log Referral</span>
+            </button>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════
 // DATA STORE
