@@ -1014,10 +1014,10 @@ async function submitReport() {
   // Simulate network delay
   await new Promise(r => setTimeout(r, 1400));
 
-   ── GOOGLE SHEETS CONNECTION ──────────────────────────
-     Uncomment the block below and replace YOUR_WEB_APP_URL
-     with the URL from your Google Apps Script deployment.
-     Everything else is already wired up.
+  // ── GOOGLE SHEETS CONNECTION ──────────────────────────
+  //   Uncomment the block below and replace YOUR_WEB_APP_URL
+  //    with the URL from your Google Apps Script deployment.
+  //   Everything else is already wired up.
 
   try {
     await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
@@ -1027,7 +1027,7 @@ async function submitReport() {
   } catch(err) {
     console.error('Submission error:', err);
   }
-  ─────────────────────────────────────────────────────── 
+  // ─────────────────────────────────────────────────────── 
 
   cases.unshift(caseData);
   console.log('ElderGuard Submission:', caseData);
@@ -1241,7 +1241,7 @@ async function saveCoordinatorReview() {
       body: JSON.stringify({ action: 'update', ...c })
     });
   } catch(err) { console.error('Update error:', err); }
-  ─────────────────────────────────────────────────────── 
+  // ─────────────────────────────────────────────────────── 
 
   btn.classList.remove('loading'); btn.disabled = false;
 
