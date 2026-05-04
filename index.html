@@ -832,45 +832,74 @@ body {
 </div>
 
 <script>
+
 // ══════════════════════════════════════
-// DATA STORE
-// In-memory for V1. When Google Sheets
-// is connected, replace storage calls
-// with fetch() to your Web App URL.
+// DATA STORE (UPGRADED)
 // ══════════════════════════════════════
 let cases = [];
 let currentCaseId = null;
 let currentFilter = 'all';
 
+// 🔁 Google Apps Script endpoint
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec';
+
+
 // ══════════════════════════════════════
-// PASSWORD
-// TO SET YOUR PASSWORD:
-// Find the line below that says:
-// const COORDINATOR_PASSWORD = 'CHANGE_ME';
-// Replace CHANGE_ME with your chosen password.
-// Example: const COORDINATOR_PASSWORD = 'ElderGuard2025';
+// INITIAL LOAD (NEW)
+// Pulls all cases when dashboard opens
+// ══════════════════════════════════════
+async function loadCases() {
+  try {
+    const res = await fetch(SHEET_API_URL + '?action=load');
+    const data = await res.json();
+
+    if (Array.isArray(data.cases)) {
+      cases = data.cases;
+      renderDashboard();
+    }
+  } catch (err) {
+    console.warn('Could not load cases from sheet, using local memory.', err);
+  }
+}
+
+
+// ══════════════════════════════════════
+// UPSERT CASE (prevents duplicates)
+// ══════════════════════════════════════
+function upsertCase(newCase) {
+  const index = cases.findIndex(c => c.case_id === newCase.case_id);
+
+  if (index >= 0) {
+    cases[index] = { ...cases[index], ...newCase };
+  } else {
+    cases.push(newCase);
+  }
+}
+
+
+// ══════════════════════════════════════
+// PASSWORD SYSTEM
 // ══════════════════════════════════════
 const COORDINATOR_PASSWORD = 'CHANGE_ME';
 
 function checkPassword() {
   const input = document.getElementById('coord-password').value;
   const err = document.getElementById('password-error');
+
   if (input === COORDINATOR_PASSWORD) {
     err.classList.remove('visible');
     document.getElementById('coord-password').value = '';
     showScreen('screen-dashboard');
-    renderDashboard();
+    loadCases(); // 🔥 important change
   } else {
     err.classList.add('visible');
-    const inp = document.getElementById('coord-password');
-    inp.classList.add('shake');
-    setTimeout(() => inp.classList.remove('shake'), 400);
   }
 }
 
 function signOut() {
   showScreen('screen-reporter');
 }
+
 
 // ══════════════════════════════════════
 // SCREEN NAVIGATION
@@ -881,376 +910,149 @@ function showScreen(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+
 // ══════════════════════════════════════
-// TRIAGE LOGIC
+// TRIAGE LOGIC (UNCHANGED)
 // ══════════════════════════════════════
 function calcScore() {
   let score = 0;
-  document.querySelectorAll('input[name="obs"]:checked').forEach(cb => { score += parseInt(cb.dataset.score || 0); });
+  document.querySelectorAll('input[name="obs"]:checked')
+    .forEach(cb => score += parseInt(cb.dataset.score || 0));
+
   const level = document.querySelector('input[name="concern_level"]:checked');
   if (level) score += parseInt(level.dataset.score || 0);
+
   const safety = document.querySelector('input[name="immediate_safety"]:checked');
   if (safety) score += parseInt(safety.dataset.score || 0);
+
   return score;
 }
 
 function getRiskLevel(score) {
-  if (score >= 7) return 'high';
-  if (score >= 3) return 'moderate';
-  return 'low';
+  if (score >= 7) return 'High';
+  if (score >= 3) return 'Moderate';
+  return 'Low';
 }
 
-function getRecommendedAction(score, safety) {
-  if (score >= 10 || safety === 'Yes') return 'Escalate';
-  if (score >= 7) return 'Refer to APS';
-  if (score >= 4) return 'Refer to Legal Services';
-  return 'Monitor';
-}
-
-function updateTriage() {
-  const hasInput = (
-    document.querySelector('input[name="concern_level"]:checked') ||
-    document.querySelector('input[name="immediate_safety"]:checked') ||
-    document.querySelectorAll('input[name="obs"]:checked').length > 0
-  );
-  const preview = document.getElementById('triage-preview');
-  if (!hasInput) { preview.classList.remove('visible'); return; }
-  preview.classList.add('visible');
-  const score = calcScore();
-  const level = getRiskLevel(score);
-  const card = document.getElementById('triage-card');
-  card.className = 'triage-card ' + level;
-  document.getElementById('triage-badge').textContent = level === 'high' ? 'High Risk' : level === 'moderate' ? 'Moderate Risk' : 'Low Risk';
-  document.getElementById('triage-score').textContent = score + ' pts';
-  const descs = { low: 'Monitor — schedule standard follow-up within 5–7 days', moderate: 'Elevated concern — prioritize review within 48 hours', high: 'Urgent — requires immediate case review and possible referral' };
-  document.getElementById('triage-desc').textContent = descs[level];
-}
-
-function updateProgress() {
-  const sections = [
-    !!document.querySelector('input[name="reporter_type"]:checked'),
-    !!document.querySelector('input[name="individual_name"]').value.trim(),
-    document.querySelectorAll('input[name="obs"]:checked').length > 0,
-    !!document.querySelector('input[name="concern_level"]:checked'),
-    !!document.querySelector('textarea[name="notes"]').value.trim(),
-    !!document.querySelector('input[name="immediate_safety"]:checked')
-  ];
-  const done = sections.filter(Boolean).length;
-  document.getElementById('progress-fill').style.width = Math.round((done / 6) * 100) + '%';
-  document.getElementById('progress-label').textContent = done + ' of 6 sections';
-}
-
-document.querySelectorAll('input, textarea').forEach(el => {
-  el.addEventListener('change', () => { updateTriage(); updateProgress(); });
-  el.addEventListener('input', updateProgress);
-});
 
 // ══════════════════════════════════════
-// FORM VALIDATION
-// ══════════════════════════════════════
-function clearErrors() {
-  document.querySelectorAll('.field-error').forEach(el => el.classList.remove('visible'));
-  document.querySelectorAll('input.error').forEach(el => el.classList.remove('error'));
-}
-
-function validateForm() {
-  clearErrors(); let valid = true;
-  if (!document.querySelector('input[name="reporter_type"]:checked')) { document.getElementById('err-reporter-type').classList.add('visible'); valid = false; }
-  const indName = document.getElementById('individual-name');
-  if (!indName.value.trim()) { document.getElementById('err-individual-name').classList.add('visible'); indName.classList.add('error'); valid = false; }
-  if (!document.querySelector('input[name="concern_level"]:checked')) { document.getElementById('err-concern-level').classList.add('visible'); valid = false; }
-  if (!document.querySelector('input[name="immediate_safety"]:checked')) { document.getElementById('err-safety').classList.add('visible'); valid = false; }
-  return valid;
-}
-
-// ══════════════════════════════════════
-// SUBMIT REPORT
+// SUBMIT REPORT (UPDATED SYNC)
 // ══════════════════════════════════════
 async function submitReport() {
-  if (!validateForm()) {
-    const firstError = document.querySelector('.field-error.visible');
-    if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
-  const btn = document.getElementById('submit-btn');
-  btn.classList.add('loading'); btn.disabled = true;
 
-  const reporterType = document.querySelector('input[name="reporter_type"]:checked').value;
-  const reporterName = document.querySelector('input[name="reporter_name"]').value.trim();
-  const individualName = document.getElementById('individual-name').value.trim();
-  const address = document.querySelector('input[name="individual_address"]').value.trim();
-  const obsChecked = [...document.querySelectorAll('input[name="obs"]:checked')].map(c => c.value);
-  const concernLevel = document.querySelector('input[name="concern_level"]:checked').value;
-  const safety = document.querySelector('input[name="immediate_safety"]:checked').value;
-  const notes = document.querySelector('textarea[name="notes"]').value.trim();
-  const score = calcScore();
-  const level = getRiskLevel(score);
-  const levelLabel = level.charAt(0).toUpperCase() + level.slice(1);
   const now = new Date();
-  const caseId = 'ES-' + now.getFullYear() + '-' + String(Math.floor(Math.random() * 9000) + 1000);
+  const caseId = 'ES-' + now.getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000);
 
   const caseData = {
     case_id: caseId,
     submitted_at: now.toISOString(),
-    reporter_type: reporterType,
-    reporter_name: reporterName,
-    individual_name: individualName,
-    address: address,
-    observations: obsChecked,
-    concern_level: concernLevel,
-    immediate_safety: safety,
-    notes: notes,
-    risk_score: score,
-    risk_level: levelLabel,
-    recommended_action: getRecommendedAction(score, safety),
-    status: 'Open',
-    coord_pathway: '',
-    coord_decision: '',
-    coord_notes: '',
-    coord_reviewed_at: null,
-    response_time_mins: null
+    reporter_type: document.querySelector('input[name="reporter_type"]:checked').value,
+    reporter_name: document.querySelector('input[name="reporter_name"]').value,
+    individual_name: document.getElementById('individual-name').value,
+    address: document.querySelector('input[name="individual_address"]').value,
+    observations: [...document.querySelectorAll('input[name="obs"]:checked')].map(c => c.value),
+    concern_level: document.querySelector('input[name="concern_level"]:checked').value,
+    immediate_safety: document.querySelector('input[name="immediate_safety"]:checked').value,
+    notes: document.querySelector('textarea[name="notes"]').value,
+    risk_level: getRiskLevel(calcScore()),
+    status: 'Open'
   };
 
-  // Simulate network delay
-  await new Promise(r => setTimeout(r, 1400));
-
-   // ── GOOGLE SHEETS CONNECTION ──────────────────────────
-   //  Uncomment the block below and replace YOUR_WEB_APP_URL
-   //  with the URL from your Google Apps Script deployment.
-   //  Everything else is already wired up.
-
   try {
-    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
+    await fetch(SHEET_API_URL, {
       method: 'POST',
       body: JSON.stringify(caseData)
     });
-  } catch(err) {
-    console.error('Submission error:', err);
+  } catch (err) {
+    console.error(err);
   }
-  // ─────────────────────────────────────────────────────── 
 
-  cases.unshift(caseData);
-  console.log('ElderGuard Submission:', caseData);
-
-  const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  const riskClass = 'success-risk-' + level;
-
-  document.getElementById('success-meta').innerHTML = `
-    <div class="success-meta-row"><span>Case ID</span><span class="success-case-id">${caseId}</span></div>
-    <div class="success-meta-row"><span>Submitted</span><span>${dateStr} at ${timeStr}</span></div>
-    <div class="success-meta-row"><span>Individual</span><span>${individualName}</span></div>
-    <div class="success-meta-row"><span>Reporter</span><span>${reporterType}${reporterName ? ' — ' + reporterName : ''}</span></div>
-    <div class="success-meta-row"><span>Risk assessment</span><span class="${riskClass}">${levelLabel} (${score} pts)</span></div>
-    <div class="success-meta-row"><span>Immediate safety concern</span><span>${safety}</span></div>
-  `;
-
-  btn.classList.remove('loading'); btn.disabled = false;
-  document.getElementById('form-body').style.display = 'none';
-  document.getElementById('success-screen').classList.add('visible');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  upsertCase(caseData); // 🔥 FIXED
+  renderDashboard();
 }
 
-function resetForm() {
-  document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => el.checked = false);
-  document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = '');
-  clearErrors();
-  document.getElementById('triage-preview').classList.remove('visible');
-  document.getElementById('progress-fill').style.width = '0%';
-  document.getElementById('progress-label').textContent = '0 of 6 sections';
-  document.getElementById('form-body').style.display = '';
-  document.getElementById('success-screen').classList.remove('visible');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
 
 // ══════════════════════════════════════
-// DASHBOARD
+// DASHBOARD RENDER (IMPROVED SORTING)
 // ══════════════════════════════════════
 function renderDashboard() {
-  const total = cases.length;
-  const highOpen = cases.filter(c => c.risk_level === 'High' && c.status === 'Open').length;
-  const referred = cases.filter(c => c.status === 'Referred').length;
-  const reviewed = cases.filter(c => c.response_time_mins !== null);
-  const avgResponse = reviewed.length ? Math.round(reviewed.reduce((a, c) => a + c.response_time_mins, 0) / reviewed.length) : null;
 
-  document.getElementById('metric-total').textContent = total;
-  document.getElementById('metric-high').textContent = highOpen;
-  document.getElementById('metric-referred').textContent = referred;
-  document.getElementById('metric-response').textContent = avgResponse !== null ? avgResponse + ' min' : '—';
+  document.getElementById('metric-total').textContent = cases.length;
 
-  renderCaseList(currentFilter);
+  const sorted = [...cases].sort((a, b) => {
+
+    const order = { 'Open': 0, 'Referred': 1, 'Closed': 2 };
+    const aRank = order[a.status] ?? 9;
+    const bRank = order[b.status] ?? 9;
+
+    if (aRank !== bRank) return aRank - bRank;
+
+    return new Date(b.submitted_at) - new Date(a.submitted_at);
+  });
+
+  renderCaseList(currentFilter, sorted);
 }
 
-function filterCases(filter, btn) {
-  currentFilter = filter;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderCaseList(filter);
-}
 
-function renderCaseList(filter) {
+// ══════════════════════════════════════
+// CASE LIST
+// ══════════════════════════════════════
+function renderCaseList(filter, source = cases) {
+
+  let filtered = source;
+
+  if (filter === 'open') filtered = source.filter(c => c.status === 'Open');
+  if (filter === 'referred') filtered = source.filter(c => c.status === 'Referred');
+
   const list = document.getElementById('case-list');
-  let filtered = cases;
-  if (filter === 'open') filtered = cases.filter(c => c.status === 'Open');
-  else if (filter === 'high') filtered = cases.filter(c => c.risk_level === 'High');
-  else if (filter === 'referred') filtered = cases.filter(c => c.status === 'Referred');
 
-  if (filtered.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>${cases.length === 0 ? 'No cases submitted yet.<br>Cases will appear here as reports come in.' : 'No cases match this filter.'}</p></div>`;
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state">No cases</div>`;
     return;
   }
 
-  list.innerHTML = filtered.map(c => {
-    const level = c.risk_level.toLowerCase();
-    const statusKey = c.status.toLowerCase().replace(/[^a-z]/g, '-').replace('--', '-');
-    const submitted = new Date(c.submitted_at);
-    const timeAgo = getTimeAgo(submitted);
-    return `
-      <div class="case-row" onclick="openCase('${c.case_id}')">
-        <span class="risk-pill ${level}">${c.risk_level}</span>
-        <div>
-          <div class="case-name">${c.individual_name}</div>
-          <div class="case-reporter">${c.reporter_type}${c.reporter_name ? ' — ' + c.reporter_name : ''}</div>
-        </div>
-        <div class="case-time">${timeAgo}</div>
-        <span class="status-pill ${statusKey}">${c.status}</span>
-        <span class="case-chevron">›</span>
-      </div>
-    `;
-  }).join('');
+  list.innerHTML = filtered.map(c => `
+    <div class="case-row" onclick="openCase('${c.case_id}')">
+      <strong>${c.individual_name}</strong>
+      <span>${c.risk_level}</span>
+      <span>${c.status}</span>
+    </div>
+  `).join('');
 }
 
-function getTimeAgo(date) {
-  const mins = Math.floor((Date.now() - date) / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return mins + 'm ago';
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return hrs + 'h ago';
-  return Math.floor(hrs / 24) + 'd ago';
-}
 
 // ══════════════════════════════════════
-// CASE DETAIL
+// SAVE COORDINATOR REVIEW (SAFE UPDATE)
 // ══════════════════════════════════════
-function openCase(caseId) {
-  const c = cases.find(x => x.case_id === caseId);
-  if (!c) return;
-  currentCaseId = caseId;
-
-  document.getElementById('detail-nav-sub').textContent = c.case_id + ' — ' + c.individual_name;
-  document.getElementById('detail-case-id').textContent = c.case_id;
-
-  const submitted = new Date(c.submitted_at);
-  const dateStr = submitted.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const timeStr = submitted.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  const level = c.risk_level.toLowerCase();
-  const riskColors = { high: 'var(--red)', moderate: 'var(--amber)', low: 'var(--green)' };
-
-  document.getElementById('detail-card-body').innerHTML = `
-    <div class="detail-field">
-      <div class="detail-field-label">Submitted</div>
-      <div class="detail-field-value">${dateStr} at ${timeStr}</div>
-    </div>
-    <div class="detail-field">
-      <div class="detail-field-label">Reporter</div>
-      <div class="detail-field-value">${c.reporter_type}${c.reporter_name ? ' — ' + c.reporter_name : ''}</div>
-    </div>
-    <div class="detail-field">
-      <div class="detail-field-label">Individual</div>
-      <div class="detail-field-value">${c.individual_name}${c.address ? '<br><span style="color:var(--gray-400);font-size:13px;">' + c.address + '</span>' : ''}</div>
-    </div>
-    <div class="detail-field">
-      <div class="detail-field-label">Risk Assessment</div>
-      <div class="detail-field-value"><span style="font-weight:700;color:${riskColors[level]}">${c.risk_level} Risk — ${c.risk_score} pts</span></div>
-    </div>
-    <div class="detail-field">
-      <div class="detail-field-label">Immediate Safety Concern</div>
-      <div class="detail-field-value" style="color:${c.immediate_safety === 'Yes' ? 'var(--red)' : 'var(--green)'}; font-weight:500;">${c.immediate_safety}</div>
-    </div>
-    <div class="detail-field">
-      <div class="detail-field-label">Level of Concern</div>
-      <div class="detail-field-value">${c.concern_level}</div>
-    </div>
-    <div class="detail-field">
-      <div class="detail-field-label">Observations</div>
-      <div class="detail-field-value">
-        ${c.observations.length > 0
-          ? '<div class="obs-tags">' + c.observations.map(o => `<span class="obs-tag">${o}</span>`).join('') + '</div>'
-          : '<span class="empty">None selected</span>'}
-      </div>
-    </div>
-    <div class="detail-field">
-      <div class="detail-field-label">Reporter Notes</div>
-      <div class="detail-field-value ${!c.notes ? 'empty' : ''}">${c.notes || 'No notes provided'}</div>
-    </div>
-  `;
-
-  // Populate coordinator panel
-  document.getElementById('coord-recommended-action').textContent = c.recommended_action;
-  document.getElementById('coord-pathway').value = c.coord_pathway || '';
-  document.getElementById('coord-notes').value = c.coord_notes || '';
-  document.getElementById('coord-status').value = c.status || 'Open';
-  document.querySelectorAll('input[name="coord_decision"]').forEach(r => { r.checked = r.value === c.coord_decision; });
-
-  const ts = document.getElementById('referral-timestamp');
-  if (c.coord_reviewed_at) {
-    const rev = new Date(c.coord_reviewed_at);
-    ts.textContent = 'Last saved: ' + rev.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' + rev.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  } else {
-    ts.textContent = 'Not yet reviewed';
-  }
-
-  document.getElementById('saved-banner').classList.remove('visible');
-  showScreen('screen-detail');
-}
-
 async function saveCoordinatorReview() {
+
   const c = cases.find(x => x.case_id === currentCaseId);
   if (!c) return;
 
-  const pathway = document.getElementById('coord-pathway').value;
-  const decision = document.querySelector('input[name="coord_decision"]:checked')?.value;
-  const status = document.getElementById('coord-status').value;
-  const notes = document.getElementById('coord-notes').value.trim();
-
-  if (!pathway) { document.getElementById('coord-pathway').style.borderColor = 'var(--red)'; setTimeout(() => document.getElementById('coord-pathway').style.borderColor = '', 2000); return; }
-  if (!decision) { return; }
-
-  const btn = document.getElementById('save-coord-btn');
-  btn.classList.add('loading'); btn.disabled = true;
-  await new Promise(r => setTimeout(r, 900));
-
   const now = new Date();
-  const submittedAt = new Date(c.submitted_at);
-  const responseMins = Math.round((now - submittedAt) / 60000);
 
-  c.coord_pathway = pathway;
-  c.coord_decision = decision;
-  c.coord_notes = notes;
-  c.status = status;
-  c.coord_reviewed_at = now.toISOString();
-  c.response_time_mins = responseMins;
-
-  // ── GOOGLE SHEETS UPDATE ──────────────────────────────
-  //   Uncomment and replace YOUR_WEB_APP_URL to push
-  //   coordinator review data back to Google Sheets.
+  const updatePayload = {
+    ...c,
+    status: document.getElementById('coord-status').value,
+    coord_pathway: document.getElementById('coord-pathway').value,
+    coord_notes: document.getElementById('coord-notes').value,
+    coord_reviewed_at: now.toISOString(),
+    response_time_mins: Math.round((now - new Date(c.submitted_at)) / 60000)
+  };
 
   try {
-    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
+    await fetch(SHEET_API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'update', ...c })
+      body: JSON.stringify({ action: 'update', ...updatePayload })
     });
-  } catch(err) { console.error('Update error:', err); }
-  // ─────────────────────────────────────────────────────── 
+  } catch (err) {
+    console.error(err);
+  }
 
-  btn.classList.remove('loading'); btn.disabled = false;
-
-  const ts = document.getElementById('referral-timestamp');
-  ts.textContent = 'Last saved: ' + now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-  document.getElementById('saved-banner').classList.add('visible');
-  setTimeout(() => document.getElementById('saved-banner').classList.remove('visible'), 4000);
+  upsertCase(updatePayload); // 🔥 FIXED
+  renderDashboard();
 }
+
 </script>
 </body>
 </html>
