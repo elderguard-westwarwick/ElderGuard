@@ -1020,13 +1020,13 @@ async function submitReport() {
   //   Everything else is already wired up.
 
   try {
-    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
-      method: 'POST',
-      body: JSON.stringify(caseData)
-    });
-  } catch(err) {
-    console.error('Submission error:', err);
-  }
+  await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
+    method: 'POST',
+    body: JSON.stringify(caseData)
+  });
+} catch (err) {
+  console.error('Submission error:', err);
+}
   // ─────────────────────────────────────────────────────── 
 
   cases.unshift(caseData);
