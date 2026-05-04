@@ -1235,12 +1235,14 @@ async function saveCoordinatorReview() {
    //  Uncomment and replace YOUR_WEB_APP_URL to push
    //  coordinator review data back to Google Sheets.
 
-  try {
-    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'update', ...c })
-    });
-  } catch(err) { console.error('Update error:', err); }
+ try {
+  await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'update', ...c })
+  });
+} catch (err) {
+  console.error('Update error:', err);
+}
   // ─────────────────────────────────────────────────────── 
 
   btn.classList.remove('loading'); btn.disabled = false;
