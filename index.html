@@ -1027,7 +1027,7 @@ async function submitReport() {
   } catch(err) {
     console.error('Submission error:', err);
   }
-  ─────────────────────────────────────────────────────── 
+  // ─────────────────────────────────────────────────────── 
 
   cases.unshift(caseData);
   console.log('ElderGuard Submission:', caseData);
@@ -1241,7 +1241,7 @@ async function saveCoordinatorReview() {
       body: JSON.stringify({ action: 'update', ...c })
     });
   } catch(err) { console.error('Update error:', err); }
-  ─────────────────────────────────────────────────────── 
+  // ─────────────────────────────────────────────────────── 
 
   btn.classList.remove('loading'); btn.disabled = false;
 
