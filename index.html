@@ -685,13 +685,17 @@ body {
     </div>
 
     <div class="cases-header">
-      <div class="cases-title">Case Intake Log</div>
-      <div class="cases-filters">
-        <button class="filter-btn active" onclick="filterCases('all', this)">All</button>
-        <button class="filter-btn" onclick="filterCases('open', this)">Open</button>
-        <button class="filter-btn" onclick="filterCases('high', this)">High Risk</button>
-        <button class="filter-btn" onclick="filterCases('referred', this)">Referred</button>
-      </div>
+      <div class="cases-title">Case Intake Log <span id="cases-count" style="font-size:12px;font-weight:400;color:var(--gray-400);margin-left:6px;"></span></div>
+    </div>
+    <div class="cases-filters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1rem;">
+      <button class="filter-btn active" onclick="filterCases('all', this)">All</button>
+      <button class="filter-btn" onclick="filterCases('open', this)">Open</button>
+      <button class="filter-btn" onclick="filterCases('high', this)">High Risk</button>
+      <button class="filter-btn" onclick="filterCases('in-progress', this)">In Progress</button>
+      <button class="filter-btn" onclick="filterCases('referred', this)">Referred</button>
+      <button class="filter-btn" onclick="filterCases('monitoring', this)">Monitoring</button>
+      <button class="filter-btn" onclick="filterCases('closed', this)">Closed</button>
+      <button class="filter-btn" onclick="filterCases('closed-follow-up', this)">Follow Up</button>
     </div>
 
     <div class="case-list" id="case-list">
@@ -848,7 +852,7 @@ let currentFilter = 'all';
 // Find the line below that says:
 // const COORDINATOR_PASSWORD = 'CHANGE_ME';
 // Replace CHANGE_ME with your chosen password.
-// Example: const COORDINATOR_PASSWORD = 'ElderGuard2025';
+// Example: const COORDINATOR_PASSWORD = 'eldersafe2025';
 // ══════════════════════════════════════
 const COORDINATOR_PASSWORD = 'CHANGE_ME';
 
@@ -1014,20 +1018,20 @@ async function submitReport() {
   // Simulate network delay
   await new Promise(r => setTimeout(r, 1400));
 
-  // ── GOOGLE SHEETS CONNECTION ──────────────────────────
-  //   Uncomment the block below and replace YOUR_WEB_APP_URL
-  //    with the URL from your Google Apps Script deployment.
-  //   Everything else is already wired up.
+  /* ── GOOGLE SHEETS CONNECTION ──────────────────────────
+     Uncomment the block below and replace https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec
+     with the URL from your Google Apps Script deployment.
+     Everything else is already wired up.
 
   try {
-  await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
-    method: 'POST',
-    body: JSON.stringify(caseData)
-  });
-} catch (err) {
-  console.error('Submission error:', err);
-}
-  // ─────────────────────────────────────────────────────── 
+    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
+      method: 'POST',
+      body: JSON.stringify(caseData)
+    });
+  } catch(err) {
+    console.error('Submission error:', err);
+  }
+  ─────────────────────────────────────────────────────── */
 
   cases.unshift(caseData);
   console.log('ElderGuard Submission:', caseData);
@@ -1066,12 +1070,29 @@ function resetForm() {
 // ══════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════
-function renderDashboard() {
+
+// Sort: Open first, then by newest submitted_at
+function getSortedCases() {
+  return [...cases].sort((a, b) => {
+    const aOpen = a.status === 'Open';
+    const bOpen = b.status === 'Open';
+    if (aOpen && !bOpen) return -1;
+    if (!aOpen && bOpen) return 1;
+    return new Date(b.submitted_at) - new Date(a.submitted_at);
+  });
+}
+
+async function renderDashboard() {
+  // Load cases from Google Sheets on every dashboard open
+  await loadCasesFromSheet();
+
   const total = cases.length;
   const highOpen = cases.filter(c => c.risk_level === 'High' && c.status === 'Open').length;
   const referred = cases.filter(c => c.status === 'Referred').length;
-  const reviewed = cases.filter(c => c.response_time_mins !== null);
-  const avgResponse = reviewed.length ? Math.round(reviewed.reduce((a, c) => a + c.response_time_mins, 0) / reviewed.length) : null;
+  const reviewed = cases.filter(c => c.response_time_mins !== null && c.response_time_mins !== '');
+  const avgResponse = reviewed.length
+    ? Math.round(reviewed.reduce((a, c) => a + Number(c.response_time_mins), 0) / reviewed.length)
+    : null;
 
   document.getElementById('metric-total').textContent = total;
   document.getElementById('metric-high').textContent = highOpen;
@@ -1079,6 +1100,59 @@ function renderDashboard() {
   document.getElementById('metric-response').textContent = avgResponse !== null ? avgResponse + ' min' : '—';
 
   renderCaseList(currentFilter);
+}
+
+// ── LOAD CASES FROM GOOGLE SHEETS ─────────────────────────────
+// Fetches all cases via doGet when coordinator logs in.
+// Replace https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec with your Apps Script Web App URL.
+async function loadCasesFromSheet() {
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec';
+
+  // Skip if URL not yet configured
+  if (WEB_APP_URL.includes('YOUR_')) {
+    console.log('Web App URL not configured — using in-memory cases only.');
+    return;
+  }
+
+  try {
+    document.getElementById('case-list').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon" style="font-size:24px;animation:spin 1s linear infinite;display:inline-block;">⟳</div>
+        <p>Loading cases from database...</p>
+      </div>`;
+
+    const res = await fetch(WEB_APP_URL);
+    const data = await res.json();
+
+    if (Array.isArray(data) && data.length > 0) {
+      // Normalize sheet rows into case objects
+      cases = data.map(row => ({
+        case_id:            row['Case ID']               || '',
+        submitted_at:       row['Submitted At']           || '',
+        reporter_type:      row['Reporter Type']          || '',
+        reporter_name:      row['Reporter Name']          || '',
+        individual_name:    row['Individual Name']        || '',
+        address:            row['Address']                || '',
+        observations:       row['Observations']
+                              ? row['Observations'].split(', ')
+                              : [],
+        concern_level:      row['Concern Level']          || '',
+        immediate_safety:   row['Immediate Safety']       || '',
+        notes:              row['Notes']                  || '',
+        risk_score:         Number(row['Risk Score'])     || 0,
+        risk_level:         row['Risk Level']             || 'Low',
+        recommended_action: row['Recommended Action']     || '',
+        status:             row['Status']                 || 'Open',
+        coord_pathway:      row['Coordinator Pathway']    || '',
+        coord_decision:     row['Coordinator Decision']   || '',
+        coord_notes:        row['Coordinator Notes']      || '',
+        coord_reviewed_at:  row['Coordinator Reviewed At']|| null,
+        response_time_mins: row['Response Time (mins)']   || null
+      }));
+    }
+  } catch (err) {
+    console.error('Could not load cases from sheet:', err);
+  }
 }
 
 function filterCases(filter, btn) {
@@ -1090,29 +1164,52 @@ function filterCases(filter, btn) {
 
 function renderCaseList(filter) {
   const list = document.getElementById('case-list');
-  let filtered = cases;
-  if (filter === 'open') filtered = cases.filter(c => c.status === 'Open');
-  else if (filter === 'high') filtered = cases.filter(c => c.risk_level === 'High');
-  else if (filter === 'referred') filtered = cases.filter(c => c.status === 'Referred');
+  const sorted = getSortedCases();
+
+  // Apply filter — never remove cases, just show a subset
+  let filtered = sorted;
+  if      (filter === 'open')           filtered = sorted.filter(c => c.status === 'Open');
+  else if (filter === 'high')           filtered = sorted.filter(c => c.risk_level === 'High');
+  else if (filter === 'in-progress')    filtered = sorted.filter(c => c.status === 'In Progress');
+  else if (filter === 'referred')       filtered = sorted.filter(c => c.status === 'Referred');
+  else if (filter === 'monitoring')     filtered = sorted.filter(c => c.status === 'Monitoring');
+  else if (filter === 'closed')         filtered = sorted.filter(c => c.status === 'Closed');
+  else if (filter === 'closed-follow-up') filtered = sorted.filter(c => c.status === 'Closed — Follow Up Needed');
+
+  // Update count label
+  const countEl = document.getElementById('cases-count');
+  if (countEl) countEl.textContent = filtered.length + ' case' + (filtered.length !== 1 ? 's' : '');
 
   if (filtered.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>${cases.length === 0 ? 'No cases submitted yet.<br>Cases will appear here as reports come in.' : 'No cases match this filter.'}</p></div>`;
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>${cases.length === 0
+          ? 'No cases submitted yet.<br>Cases will appear here as reports come in.'
+          : 'No cases match this filter.'}</p>
+      </div>`;
     return;
   }
 
   list.innerHTML = filtered.map(c => {
-    const level = c.risk_level.toLowerCase();
-    const statusKey = c.status.toLowerCase().replace(/[^a-z]/g, '-').replace('--', '-');
+    const level = (c.risk_level || 'low').toLowerCase();
+    const statusKey = (c.status || 'open').toLowerCase().replace(/[^a-z]/g, '-').replace(/--+/g, '-');
     const submitted = new Date(c.submitted_at);
     const timeAgo = getTimeAgo(submitted);
+    const dateStr = submitted.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = submitted.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
     return `
       <div class="case-row" onclick="openCase('${c.case_id}')">
         <span class="risk-pill ${level}">${c.risk_level}</span>
         <div>
           <div class="case-name">${c.individual_name}</div>
-          <div class="case-reporter">${c.reporter_type}${c.reporter_name ? ' — ' + c.reporter_name : ''}</div>
+          <div class="case-reporter">${c.reporter_type}${c.reporter_name && c.reporter_name !== '—' ? ' — ' + c.reporter_name : ''}</div>
         </div>
-        <div class="case-time">${timeAgo}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+          <div class="case-time">${timeAgo}</div>
+          <div style="font-size:11px;color:var(--gray-400);">${dateStr} · ${timeStr}</div>
+        </div>
         <span class="status-pill ${statusKey}">${c.status}</span>
         <span class="case-chevron">›</span>
       </div>
@@ -1213,42 +1310,54 @@ async function saveCoordinatorReview() {
   const status = document.getElementById('coord-status').value;
   const notes = document.getElementById('coord-notes').value.trim();
 
-  if (!pathway) { document.getElementById('coord-pathway').style.borderColor = 'var(--red)'; setTimeout(() => document.getElementById('coord-pathway').style.borderColor = '', 2000); return; }
-  if (!decision) { return; }
+  if (!pathway) {
+    document.getElementById('coord-pathway').style.borderColor = 'var(--red)';
+    setTimeout(() => document.getElementById('coord-pathway').style.borderColor = '', 2000);
+    return;
+  }
+  if (!decision) {
+    alert('Please select a coordinator decision — Confirm or Modify.');
+    return;
+  }
 
   const btn = document.getElementById('save-coord-btn');
   btn.classList.add('loading'); btn.disabled = true;
-  await new Promise(r => setTimeout(r, 900));
 
   const now = new Date();
   const submittedAt = new Date(c.submitted_at);
   const responseMins = Math.round((now - submittedAt) / 60000);
 
-  c.coord_pathway = pathway;
-  c.coord_decision = decision;
-  c.coord_notes = notes;
-  c.status = status;
-  c.coord_reviewed_at = now.toISOString();
+  // Update local case object immediately
+  c.coord_pathway      = pathway;
+  c.coord_decision     = decision;
+  c.coord_notes        = notes;
+  c.status             = status;
+  c.coord_reviewed_at  = now.toISOString();
   c.response_time_mins = responseMins;
 
-   // ── GOOGLE SHEETS UPDATE ──────────────────────────────
-   //  Uncomment and replace YOUR_WEB_APP_URL to push
-   //  coordinator review data back to Google Sheets.
+  // ── PUSH UPDATE TO GOOGLE SHEETS ───────────────────────────
+  // Replace https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec with your Apps Script Web App URL.
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec';
 
- try {
-  await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
-    method: 'POST',
-    body: JSON.stringify({ action: 'update', ...c })
-  });
-} catch (err) {
-  console.error('Update error:', err);
-}
-  // ─────────────────────────────────────────────────────── 
+  if (!WEB_APP_URL.includes('YOUR_')) {
+    try {
+      await fetch(WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'update', ...c })
+      });
+    } catch (err) {
+      console.error('Coordinator update error:', err);
+    }
+  }
+  // ───────────────────────────────────────────────────────────
 
   btn.classList.remove('loading'); btn.disabled = false;
 
   const ts = document.getElementById('referral-timestamp');
-  ts.textContent = 'Last saved: ' + now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  ts.textContent = 'Last saved: '
+    + now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    + ' at '
+    + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   document.getElementById('saved-banner').classList.add('visible');
   setTimeout(() => document.getElementById('saved-banner').classList.remove('visible'), 4000);
