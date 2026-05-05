@@ -1024,7 +1024,7 @@ async function submitReport() {
      Everything else is already wired up.
 
   try {
-    await fetch('https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec', {
+    await fetch('https://script.google.com/macros/s/AKfycby_RDv1T0JIFr_60ChKee6nPEJqT6haX_HcDf5msMwkfbe0iJnHwi7aqJEbImpXHxkr/exec', {
       method: 'POST',
       body: JSON.stringify(caseData)
     });
@@ -1134,7 +1134,7 @@ async function loadCasesFromSheet() {
 // ── LOAD CASES FROM GOOGLE SHEETS (JSONP) ─────────────────────
 // Uses JSONP to bypass CORS restrictions on Google Apps Script.
 async function loadCasesFromSheet() {
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec';
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby_RDv1T0JIFr_60ChKee6nPEJqT6haX_HcDf5msMwkfbe0iJnHwi7aqJEbImpXHxkr/exec';
 
   try {
     document.getElementById('case-list').innerHTML = `
