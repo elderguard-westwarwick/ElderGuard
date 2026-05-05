@@ -420,7 +420,7 @@ body {
     <div class="topnav-right">
       <span class="version-badge">v1.0</span>
       <span class="secure-badge"><div class="secure-dot"></div> Secure</span>
-      <a class="coord-link" onclick="showScreen('screen-password')">Coordinator Login</a>
+      <a class="coord-link" href="https://script.google.com/macros/s/AKfycbz-CJnFhyBg_ZgfzcOL0dF-2RtSTvHsVps8rLEOT80Z8WEQNqd1kcB2aVuVRceYxhJl/exec" target="_blank">Coordinator Login</a>
     </div>
   </nav>
 
@@ -1019,12 +1019,12 @@ async function submitReport() {
   await new Promise(r => setTimeout(r, 1400));
 
   /* ── GOOGLE SHEETS CONNECTION ──────────────────────────
-     Uncomment the block below and replace https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec
+     Uncomment the block below and replace https://script.google.com/macros/s/AKfycbz-CJnFhyBg_ZgfzcOL0dF-2RtSTvHsVps8rLEOT80Z8WEQNqd1kcB2aVuVRceYxhJl/exec
      with the URL from your Google Apps Script deployment.
      Everything else is already wired up.
 
   try {
-    await fetch('https://script.google.com/macros/s/AKfycby_RDv1T0JIFr_60ChKee6nPEJqT6haX_HcDf5msMwkfbe0iJnHwi7aqJEbImpXHxkr/exec', {
+    await fetch('https://script.google.com/macros/s/AKfycbz-CJnFhyBg_ZgfzcOL0dF-2RtSTvHsVps8rLEOT80Z8WEQNqd1kcB2aVuVRceYxhJl/exec', {
       method: 'POST',
       body: JSON.stringify(caseData)
     });
@@ -1082,59 +1082,30 @@ function getSortedCases() {
   });
 }
 
-async function loadCasesFromSheet() {
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxcCoWLWF6SVBjVMTbIMbYuKfHmBCIn8HM-N0dLr4z5l1P2Ham4heUHIU1BFA_-wnnb/exec';
-  const PROXY_URL = 'https://api.allorigins.win/get?url=' + encodeURIComponent(WEB_APP_URL);
+async function renderDashboard() {
+  // Load cases from Google Sheets on every dashboard open
+  await loadCasesFromSheet();
 
-  try {
-    document.getElementById('case-list').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon" style="font-size:24px;animation:spin 1s linear infinite;display:inline-block;">⟳</div>
-        <p>Loading cases from database...</p>
-      </div>`;
+  const total = cases.length;
+  const highOpen = cases.filter(c => c.risk_level === 'High' && c.status === 'Open').length;
+  const referred = cases.filter(c => c.status === 'Referred').length;
+  const reviewed = cases.filter(c => c.response_time_mins !== null && c.response_time_mins !== '');
+  const avgResponse = reviewed.length
+    ? Math.round(reviewed.reduce((a, c) => a + Number(c.response_time_mins), 0) / reviewed.length)
+    : null;
 
-    const res = await fetch(PROXY_URL);
-    const wrapper = await res.json();
-    const data = JSON.parse(wrapper.contents);
+  document.getElementById('metric-total').textContent = total;
+  document.getElementById('metric-high').textContent = highOpen;
+  document.getElementById('metric-referred').textContent = referred;
+  document.getElementById('metric-response').textContent = avgResponse !== null ? avgResponse + ' min' : '—';
 
-    if (Array.isArray(data) && data.length > 0) {
-      cases = data.map(row => ({
-        case_id:            row['Case ID']                || '',
-        submitted_at:       row['Submitted At']            || '',
-        reporter_type:      row['Reporter Type']           || '',
-        reporter_name:      row['Reporter Name']           || '',
-        individual_name:    row['Individual Name']         || '',
-        address:            row['Address']                 || '',
-        observations:       row['Observations']
-                              ? row['Observations'].split(', ')
-                              : [],
-        concern_level:      row['Concern Level']           || '',
-        immediate_safety:   row['Immediate Safety']        || '',
-        notes:              row['Notes']                   || '',
-        risk_score:         Number(row['Risk Score'])      || 0,
-        risk_level:         row['Risk Level']              || 'Low',
-        recommended_action: row['Recommended Action']      || '',
-        status:             row['Status']                  || 'Open',
-        coord_pathway:      row['Coordinator Pathway']     || '',
-        coord_decision:     row['Coordinator Decision']    || '',
-        coord_notes:        row['Coordinator Notes']       || '',
-        coord_reviewed_at:  row['Coordinator Reviewed At'] || null,
-        response_time_mins: row['Response Time (mins)']    || null
-      }));
-    }
-  } catch (err) {
-    console.error('Could not load cases from sheet:', err);
-    document.getElementById('case-list').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">⚠️</div>
-        <p>Could not load cases. Please check your connection and try again.</p>
-      </div>`;
-  }
+  renderCaseList(currentFilter);
 }
+
 // ── LOAD CASES FROM GOOGLE SHEETS (JSONP) ─────────────────────
 // Uses JSONP to bypass CORS restrictions on Google Apps Script.
 async function loadCasesFromSheet() {
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby_RDv1T0JIFr_60ChKee6nPEJqT6haX_HcDf5msMwkfbe0iJnHwi7aqJEbImpXHxkr/exec';
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-CJnFhyBg_ZgfzcOL0dF-2RtSTvHsVps8rLEOT80Z8WEQNqd1kcB2aVuVRceYxhJl/exec';
 
   try {
     document.getElementById('case-list').innerHTML = `
@@ -1384,8 +1355,8 @@ async function saveCoordinatorReview() {
   c.response_time_mins = responseMins;
 
   // ── PUSH UPDATE TO GOOGLE SHEETS ───────────────────────────
-  // Replace https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec with your Apps Script Web App URL.
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec';
+  // Replace https://script.google.com/macros/s/AKfycbz-CJnFhyBg_ZgfzcOL0dF-2RtSTvHsVps8rLEOT80Z8WEQNqd1kcB2aVuVRceYxhJl/exec with your Apps Script Web App URL.
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbz-CJnFhyBg_ZgfzcOL0dF-2RtSTvHsVps8rLEOT80Z8WEQNqd1kcB2aVuVRceYxhJl/exec';
 
   if (!WEB_APP_URL.includes('YOUR_')) {
     try {
