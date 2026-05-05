@@ -1019,12 +1019,12 @@ async function submitReport() {
   await new Promise(r => setTimeout(r, 1400));
 
   /* ── GOOGLE SHEETS CONNECTION ──────────────────────────
-     Uncomment the block below and replace https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec
+     Uncomment the block below and replace https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec
      with the URL from your Google Apps Script deployment.
      Everything else is already wired up.
 
   try {
-    await fetch('https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec', {
+    await fetch('https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec', {
       method: 'POST',
       body: JSON.stringify(caseData)
     });
@@ -1102,17 +1102,10 @@ async function renderDashboard() {
   renderCaseList(currentFilter);
 }
 
-// ── LOAD CASES FROM GOOGLE SHEETS ─────────────────────────────
-// Fetches all cases via doGet when coordinator logs in.
-// Replace https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec with your Apps Script Web App URL.
+// ── LOAD CASES FROM GOOGLE SHEETS (JSONP) ─────────────────────
+// Uses JSONP to bypass CORS restrictions on Google Apps Script.
 async function loadCasesFromSheet() {
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec';
-
-  // Skip if URL not yet configured
-  if (WEB_APP_URL.includes('YOUR_')) {
-    console.log('Web App URL not configured — using in-memory cases only.');
-    return;
-  }
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec';
 
   try {
     document.getElementById('case-list').innerHTML = `
@@ -1121,37 +1114,63 @@ async function loadCasesFromSheet() {
         <p>Loading cases from database...</p>
       </div>`;
 
-    const res = await fetch(WEB_APP_URL);
-    const data = await res.json();
+    const data = await new Promise((resolve, reject) => {
+      const callbackName = 'elderguard_cb_' + Date.now();
+      const script = document.createElement('script');
+      const timeout = setTimeout(() => {
+        delete window[callbackName];
+        if (document.body.contains(script)) document.body.removeChild(script);
+        reject(new Error('Request timed out'));
+      }, 10000);
+
+      window[callbackName] = function(response) {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        if (document.body.contains(script)) document.body.removeChild(script);
+        resolve(response);
+      };
+
+      script.src = WEB_APP_URL + '?callback=' + callbackName;
+      script.onerror = () => {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        reject(new Error('Script load failed'));
+      };
+      document.body.appendChild(script);
+    });
 
     if (Array.isArray(data) && data.length > 0) {
-      // Normalize sheet rows into case objects
       cases = data.map(row => ({
-        case_id:            row['Case ID']               || '',
-        submitted_at:       row['Submitted At']           || '',
-        reporter_type:      row['Reporter Type']          || '',
-        reporter_name:      row['Reporter Name']          || '',
-        individual_name:    row['Individual Name']        || '',
-        address:            row['Address']                || '',
+        case_id:            row['Case ID']                || '',
+        submitted_at:       row['Submitted At']            || '',
+        reporter_type:      row['Reporter Type']           || '',
+        reporter_name:      row['Reporter Name']           || '',
+        individual_name:    row['Individual Name']         || '',
+        address:            row['Address']                 || '',
         observations:       row['Observations']
                               ? row['Observations'].split(', ')
                               : [],
-        concern_level:      row['Concern Level']          || '',
-        immediate_safety:   row['Immediate Safety']       || '',
-        notes:              row['Notes']                  || '',
-        risk_score:         Number(row['Risk Score'])     || 0,
-        risk_level:         row['Risk Level']             || 'Low',
-        recommended_action: row['Recommended Action']     || '',
-        status:             row['Status']                 || 'Open',
-        coord_pathway:      row['Coordinator Pathway']    || '',
-        coord_decision:     row['Coordinator Decision']   || '',
-        coord_notes:        row['Coordinator Notes']      || '',
-        coord_reviewed_at:  row['Coordinator Reviewed At']|| null,
-        response_time_mins: row['Response Time (mins)']   || null
+        concern_level:      row['Concern Level']           || '',
+        immediate_safety:   row['Immediate Safety']        || '',
+        notes:              row['Notes']                   || '',
+        risk_score:         Number(row['Risk Score'])      || 0,
+        risk_level:         row['Risk Level']              || 'Low',
+        recommended_action: row['Recommended Action']      || '',
+        status:             row['Status']                  || 'Open',
+        coord_pathway:      row['Coordinator Pathway']     || '',
+        coord_decision:     row['Coordinator Decision']    || '',
+        coord_notes:        row['Coordinator Notes']       || '',
+        coord_reviewed_at:  row['Coordinator Reviewed At'] || null,
+        response_time_mins: row['Response Time (mins)']    || null
       }));
     }
   } catch (err) {
     console.error('Could not load cases from sheet:', err);
+    document.getElementById('case-list').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <p>Could not load cases. Please check your connection and try again.</p>
+      </div>`;
   }
 }
 
@@ -1336,8 +1355,8 @@ async function saveCoordinatorReview() {
   c.response_time_mins = responseMins;
 
   // ── PUSH UPDATE TO GOOGLE SHEETS ───────────────────────────
-  // Replace https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec with your Apps Script Web App URL.
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxCMrY2lTDVVv51P_TJYsV3hE9ANr40T5TvCjZGKALgrktk4CQmCzzgNkvGTDRFGtZT/exec';
+  // Replace https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec with your Apps Script Web App URL.
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwpcO9l1zcFVOZLQyr1ua8vKwTQusu_y-zFEHlf4SiGyJfZ2L9Jg30wgyY_n7_FVP9m/exec';
 
   if (!WEB_APP_URL.includes('YOUR_')) {
     try {
