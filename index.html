@@ -420,7 +420,7 @@ body {
     <div class="topnav-right">
       <span class="version-badge">v1.0</span>
       <span class="secure-badge"><div class="secure-dot"></div> Secure</span>
-      <a class="coord-link" href="https://script.google.com/macros/s/AKfycbzhrJcpHD8vWN7n2ENcbMetTQnLCCxROkqb0vb5AcM7qbNts_ayM_XiUvdLRLFCDanF/exec" target="_blank">Coordinator Login</a>
+      <a class="coord-link" href="https://script.google.com/macros/s/AKfycbycgnJSKfGqeFG3U30m6cfuOvEGth0S7rb6Ah5iOMOg6JRfmRMWIWIqHco1nlopZFqX/exec" target="_blank">Coordinator Login</a>
     </div>
   </nav>
 
@@ -1019,12 +1019,12 @@ async function submitReport() {
   await new Promise(r => setTimeout(r, 1400));
 
   /* ── GOOGLE SHEETS CONNECTION ──────────────────────────
-     Uncomment the block below and replace https://script.google.com/macros/s/AKfycbzhrJcpHD8vWN7n2ENcbMetTQnLCCxROkqb0vb5AcM7qbNts_ayM_XiUvdLRLFCDanF/exec
+     Uncomment the block below and replace https://script.google.com/macros/s/AKfycbycgnJSKfGqeFG3U30m6cfuOvEGth0S7rb6Ah5iOMOg6JRfmRMWIWIqHco1nlopZFqX/exec
      with the URL from your Google Apps Script deployment.
      Everything else is already wired up.
 
   try {
-    await fetch('https://script.google.com/macros/s/AKfycbzhrJcpHD8vWN7n2ENcbMetTQnLCCxROkqb0vb5AcM7qbNts_ayM_XiUvdLRLFCDanF/exec', {
+    await fetch('https://script.google.com/macros/s/AKfycbycgnJSKfGqeFG3U30m6cfuOvEGth0S7rb6Ah5iOMOg6JRfmRMWIWIqHco1nlopZFqX/exec', {
       method: 'POST',
       body: JSON.stringify(caseData)
     });
@@ -1105,7 +1105,7 @@ async function renderDashboard() {
 // ── LOAD CASES FROM GOOGLE SHEETS (JSONP) ─────────────────────
 // Uses JSONP to bypass CORS restrictions on Google Apps Script.
 async function loadCasesFromSheet() {
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzhrJcpHD8vWN7n2ENcbMetTQnLCCxROkqb0vb5AcM7qbNts_ayM_XiUvdLRLFCDanF/exec';
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbycgnJSKfGqeFG3U30m6cfuOvEGth0S7rb6Ah5iOMOg6JRfmRMWIWIqHco1nlopZFqX/exec';
 
   try {
     document.getElementById('case-list').innerHTML = `
@@ -1355,8 +1355,8 @@ async function saveCoordinatorReview() {
   c.response_time_mins = responseMins;
 
   // ── PUSH UPDATE TO GOOGLE SHEETS ───────────────────────────
-  // Replace https://script.google.com/macros/s/AKfycbzhrJcpHD8vWN7n2ENcbMetTQnLCCxROkqb0vb5AcM7qbNts_ayM_XiUvdLRLFCDanF/exec with your Apps Script Web App URL.
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzhrJcpHD8vWN7n2ENcbMetTQnLCCxROkqb0vb5AcM7qbNts_ayM_XiUvdLRLFCDanF/exec';
+  // Replace https://script.google.com/macros/s/AKfycbycgnJSKfGqeFG3U30m6cfuOvEGth0S7rb6Ah5iOMOg6JRfmRMWIWIqHco1nlopZFqX/exec with your Apps Script Web App URL.
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbycgnJSKfGqeFG3U30m6cfuOvEGth0S7rb6Ah5iOMOg6JRfmRMWIWIqHco1nlopZFqX/exec';
 
   if (!WEB_APP_URL.includes('YOUR_')) {
     try {
